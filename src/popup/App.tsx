@@ -9,8 +9,10 @@ import { ImageGallery } from "./components/features/ImageGallery";
 import { LocationCard } from "./components/features/LocationCard";
 import { Select } from "./components/atoms/Select";
 import { Card } from "./components/atoms/Card";
-import { BrainIcon } from "@phosphor-icons/react";
+import { Button } from "./components/atoms/Button";
+import { BrainIcon, LightningIcon } from "@phosphor-icons/react";
 import { API_BASE, EXTENSION_AUTH_PATH } from "../config";
+import type { Address } from "../types";
 
 type PartialListing = {
   url?: string;
@@ -101,6 +103,20 @@ async function triggerParseActiveTab(): Promise<PartialListing | null> {
   return null;
 }
 
+async function triggerParseAIOnActiveTab(): Promise<PartialListing | null> {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tabs[0]?.id) {
+    return new Promise((resolve) => {
+      chrome.tabs.sendMessage(
+        tabs[0].id!,
+        { type: "SNP_TRIGGER_EXTRACT_AI" },
+        (resp: any) => resolve((resp?.data as PartialListing) || null)
+      );
+    });
+  }
+  return null;
+}
+
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -124,6 +140,26 @@ function downloadJson(data: unknown) {
   a.download = "listing.json";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function formatAddress(addr?: Address | null): string {
+  if (!addr) return "";
+  const formatted = (addr as any).formatted as string | undefined | null;
+  if (typeof formatted === "string" && formatted.trim())
+    return formatted.trim();
+
+  const parts: string[] = [];
+  const line1 = [addr.street, addr.houseNumber]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (line1) parts.push(line1);
+  if (addr.city) parts.push(addr.city);
+  if (addr.district) parts.push(addr.district);
+  if (addr.region) parts.push(addr.region);
+  if (addr.postalCode) parts.push(addr.postalCode);
+  if (addr.country) parts.push(addr.country);
+  return parts.join(", ");
 }
 
 export const App: FunctionComponent = () => {
@@ -189,7 +225,9 @@ export const App: FunctionComponent = () => {
       currency: d?.price?.currency || "",
       area: d?.area?.value != null ? String(d.area.value) : "",
       transactionType: (d?.transactionType || "") as string,
-      address: d?.address?.formatted || "",
+      address:
+        formatAddress(d?.address as Address | null) ||
+        (typeof (d as any)?.address === "string" ? (d as any).address : ""),
       imageUrl: (d?.images && d.images[0]) || "",
     });
   };
@@ -272,6 +310,17 @@ export const App: FunctionComponent = () => {
 
   const { statuses, percent } = computeStatuses(data);
 
+  const [inProgress, setInProgress] = useState<string>("В процессе...");
+  const variants = ["В процессе...", "Щас..", "Ещё чуть-чуть...", "Делаем..."];
+
+  useEffect(() => {
+    let i = 0;
+    setInterval(() => {
+      setInProgress(variants[i % variants.length]);
+      i++;
+    }, 1000);
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
       <Header
@@ -305,27 +354,45 @@ export const App: FunctionComponent = () => {
                   Режим парсинга
                 </span>
               </div>
-              <Select
-                value={parsingMode}
-                onChange={(v) => handleParsingModeChange(v as "manual" | "ai")}
-                options={[
-                  { value: "manual", label: "Ручной парсинг (быстрый)" },
-                  { value: "ai", label: "ИИ-парсинг (универсальный)" },
-                ]}
-                className="w-full"
-              />
+              <div className="flex items-center justify-between gap-6 w-full">
+                <Select
+                  value={parsingMode}
+                  onChange={(v) =>
+                    handleParsingModeChange(v as "manual" | "ai")
+                  }
+                  options={[
+                    { value: "manual", label: "Ручной парсинг (быстрый)" },
+                    { value: "ai", label: "ИИ-парсинг (универсальный)" },
+                  ]}
+                  className="flex-1"
+                />
+
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  variant="primary"
+                  onClick={handleParse}
+                >
+                  {parsingMode === "ai" && <LightningIcon />}
+                  <span>{isParsing ? inProgress : "Запустить парсинг"}</span>
+                </Button>
+              </div>
               <p className="text-xs text-gray-600 mt-2 leading-relaxed">
                 {parsingMode === "ai" ? (
                   <>
                     <strong>ИИ-парсинг:</strong> универсальный метод, работает
                     на любых сайтах. HTML страницы предобрабатывается и
                     отправляется на сервер для анализа через ИИ.
+                    <br />
+                    Требуется активная подписка.
                   </>
                 ) : (
                   <>
                     <strong>Ручной парсинг:</strong> быстрый метод с
                     использованием специальных парсеров для известных сайтов
                     недвижимости.
+                    <br />
+                    Выполняется автоматически при открытии страницы.
                   </>
                 )}
               </p>

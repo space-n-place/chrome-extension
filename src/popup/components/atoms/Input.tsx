@@ -22,7 +22,7 @@ export const Input: FunctionComponent<InputProps> = ({
   className = "",
 }) => {
   const baseStyles =
-    "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all";
+    "w-full px-3 py-2 bg-white text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all";
 
   const handleChange = (
     e: JSX.TargetedEvent<HTMLInputElement | HTMLTextAreaElement>

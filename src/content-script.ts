@@ -40,31 +40,13 @@ async function parseWithAI(): Promise<Partial<Listing> | null> {
       return null;
     }
 
-    const result = resp.data;
+    const result = resp.data as Listing;
     console.log("[SNP] AI parsing successful:", result);
 
     // Преобразуем результат в формат Listing
     const listing: Partial<Listing> = {
+      ...result,
       url: window.location.href,
-      title: result.title || null,
-      description: result.description || null,
-      price: result.price
-        ? { amount: result.price.amount, currency: result.price.currency }
-        : undefined,
-      pricePerArea: result.pricePerArea
-        ? {
-            amount: result.pricePerArea.amount,
-            currency: result.pricePerArea.currency,
-          }
-        : undefined,
-      area: result.area
-        ? { value: result.area.value, unit: result.area.unit }
-        : undefined,
-      propertyType: result.propertyType || null,
-      transactionType: result.transactionType || null,
-      address: result.address || undefined,
-      images: result.images || [],
-      rooms: result.rooms || undefined,
       source: {
         domain: window.location.hostname,
         extractedAt: new Date().toISOString(),
@@ -75,6 +57,24 @@ async function parseWithAI(): Promise<Partial<Listing> | null> {
     return listing;
   } catch (error) {
     console.error("[SNP] AI parsing error:", error);
+    return null;
+  }
+}
+
+/**
+ * Ручной парсинг (автозапуск)
+ */
+async function extractAndSendManual(): Promise<Partial<Listing> | null> {
+  try {
+    const data = await parseWithRegistry();
+    if (!data) return null;
+    chrome.runtime.sendMessage({
+      type: "SNP_LISTING_EXTRACTED",
+      payload: data,
+    });
+    return data;
+  } catch (error) {
+    console.error("[SNP] Manual extraction error:", error);
     return null;
   }
 }
@@ -120,6 +120,20 @@ chrome.runtime.onMessage.addListener(
         .catch(() => sendResponse({ ok: false }));
       return true;
     }
+    if (msg.type === "SNP_TRIGGER_EXTRACT_AI") {
+      parseWithAI()
+        .then((data) => {
+          if (data) {
+            chrome.runtime.sendMessage({
+              type: "SNP_LISTING_EXTRACTED",
+              payload: data,
+            });
+          }
+          sendResponse({ ok: true, data });
+        })
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
   }
 );
 
@@ -151,5 +165,14 @@ window.addEventListener("message", (event: MessageEvent) => {
   }
 });
 
-// Автозапуск на страницах (неблокирующий)
-extractAndSend();
+// Автозапуск на страницах (только для ручного режима)
+chrome.storage.local.get(["parsingMode"]).then((settings: any) => {
+  const mode = settings.parsingMode || "manual";
+  if (mode === "manual") {
+    extractAndSendManual();
+  } else {
+    console.log(
+      "[SNP] AI mode is selected — auto-parse disabled. Use popup to start AI parsing."
+    );
+  }
+});

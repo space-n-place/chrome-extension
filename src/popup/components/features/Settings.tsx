@@ -41,7 +41,7 @@ export const Settings: FunctionComponent<SettingsProps> = ({
         страницу авторизации, после чего расширение автоматически получит токен.
       </p>
 
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+      <div className="mb-4 p-3 bg-gray-100 rounded-lg">
         <div className="flex items-center gap-2 mb-1">
           <UserIcon size={14} className="text-gray-400" />
           <span className="text-xs font-medium text-gray-500">

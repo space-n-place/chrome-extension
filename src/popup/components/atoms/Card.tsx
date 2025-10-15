@@ -11,7 +11,11 @@ export const Card: FunctionComponent<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 ${className}`}
+      className={`rounded-xl border border-gray-100 bg-white/10 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-4 ${className}`}
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0.05))",
+      }}
     >
       {children}
     </div>

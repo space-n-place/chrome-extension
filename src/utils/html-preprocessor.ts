@@ -8,6 +8,7 @@ const REMOVE_TAGS = [
   "script",
   "style",
   "noscript",
+  "template",
   "iframe",
   "svg",
   "path",
@@ -16,6 +17,13 @@ const REMOVE_TAGS = [
   "video",
   "embed",
   "object",
+  "pre",
+  "code",
+  "form",
+  "button",
+  "input",
+  "select",
+  "textarea",
   "link[rel='stylesheet']",
   "link[rel='preload']",
   "link[rel='prefetch']",
@@ -82,6 +90,7 @@ export function preprocessHTML(html?: string): string {
 
   // 3. Очищаем атрибуты
   cleanAttributes(doc);
+  sanitizeUrlAttributes(doc);
 
   // 4. Удаляем пустые элементы и навигацию
   removeEmptyElements(doc);
@@ -134,6 +143,12 @@ function cleanAttributes(doc: Document) {
         !KEEP_ATTRIBUTES.includes(attr.name)
       ) {
         el.removeAttribute(attr.name);
+        return;
+      }
+      // Удаляем любые обработчики событий on*
+      if (/^on/i.test(attr.name)) {
+        el.removeAttribute(attr.name);
+        return;
       }
       // Также удаляем все data-* атрибуты кроме тех что в KEEP_ATTRIBUTES
       if (
@@ -141,9 +156,35 @@ function cleanAttributes(doc: Document) {
         !KEEP_ATTRIBUTES.includes(attr.name)
       ) {
         el.removeAttribute(attr.name);
+        return;
       }
     });
   });
+}
+
+/**
+ * Санитизирует href/src, удаляя javascript:/data:/и прочие небезопасные схемы
+ */
+function sanitizeUrlAttributes(doc: Document) {
+  const elements = doc.querySelectorAll("[href], [src]");
+  elements.forEach((el) => {
+    if (el.hasAttribute("href")) {
+      const v = (el.getAttribute("href") || "").trim();
+      if (!isSafeUrl(v)) el.removeAttribute("href");
+    }
+    if (el.hasAttribute("src")) {
+      const v = (el.getAttribute("src") || "").trim();
+      if (!isSafeUrl(v)) el.removeAttribute("src");
+    }
+  });
+}
+
+function isSafeUrl(value: string): boolean {
+  if (!value) return false;
+  if (/^(https?:)?\/\//i.test(value)) return true; // абсолютные или протокол-относительные
+  if (/^(\/|\.\/|\.\.\/)/.test(value)) return true; // относительные
+  if (/^(javascript:|data:|vbscript:|mailto:|tel:)/i.test(value)) return false;
+  return false;
 }
 
 /**
@@ -229,5 +270,3 @@ export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
-
-

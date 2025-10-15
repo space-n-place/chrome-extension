@@ -53,7 +53,7 @@ export const Header: FunctionComponent<HeaderProps> = ({
   isParsing = false,
 }) => {
   return (
-    <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
+    <header className="sticky top-0 z-10 border-b border-primary-500/20 bg-primary-100/10 backdrop-blur-sm px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Logo className="size-8" />
@@ -68,24 +68,15 @@ export const Header: FunctionComponent<HeaderProps> = ({
           <Button size="sm" onClick={onDownload} variant="ghost">
             <DownloadSimpleIcon />
           </Button>
-          <Button
-            size="sm"
-            onClick={onParse}
-            variant="ghost"
-            disabled={isParsing}
-          >
-            <ArrowClockwiseIcon />
-          </Button>
-
           {/* Разделитель */}
-          <div className="w-px h-6 bg-gray-300" />
+          <div className="w-px h-6 bg-white/30" />
 
           {/* Авторизация */}
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-2 py-1 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 px-2 py-1 bg-green-500/10 rounded-lg border border-green-400/30 backdrop-blur-md">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
-                <span className="text-xs font-medium text-green-700">
+                <span className="text-xs font-medium text-green-800">
                   {email || "Авторизован"}
                 </span>
               </div>
